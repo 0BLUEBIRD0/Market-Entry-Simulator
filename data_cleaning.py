@@ -18,8 +18,8 @@ year_cols = [str(year) for year in range(2015, 2025)]  # ['2015', ..., '2024']
 ev_sales = ev_sales.melt(id_vars=['cat', 'maker'], value_vars=year_cols, var_name='year', value_name='units_sold')
 ev_sales['year'] = ev_sales['year'].astype(int)
 
-# Filter for passenger EVs
-ev_sales = ev_sales[ev_sales['cat'].str.contains('passenger|car', case=False, na=False)]
+# Filter for passenger EVs (LMV = Light Motor Vehicles)
+ev_sales = ev_sales[ev_sales['cat'].str.contains('lmv', case=False, na=False)]
 ev_sales = ev_sales[['year', 'units_sold', 'cat']].rename(columns={'cat': 'vehicle_category'})
 ev_sales.to_csv(os.path.join(output_data_dir, 'ev_sales_india.csv'), index=False)
 print(f"Cleaned EV sales: {ev_sales.shape}")
@@ -38,18 +38,19 @@ econ_data.to_csv(os.path.join(output_data_dir, 'gdp_india.csv'), index=False)
 print(f"Cleaned economic data: {econ_data.shape}")
 
 # 3. Clean Competitor Data
-comp_data_path = os.path.join(raw_data_dir, 'Car details v3.csv')
+comp_data_path = os.path.join(raw_data_dir, 'car details v4.csv')
 comp_data = pd.read_csv(comp_data_path)
-# Filter for EVs
-if 'fuel' in comp_data.columns:
-    comp_data = comp_data[comp_data['fuel'] == 'Electric'][['name', 'year', 'selling_price']]
-elif 'fuel_type' in comp_data.columns:
-    comp_data = comp_data[comp_data['fuel_type'] == 'Electric'][['name', 'year', 'selling_price']]
+# Check fuel column
+fuel_col = 'Fuel Type'  # Known from dataset
+print(f"Fuel column found: {fuel_col}")
+print(f"Fuel values: {comp_data[fuel_col].unique()}")
+comp_data = comp_data[comp_data[fuel_col] == 'Electric'][['Make', 'Year', 'Price']]
+if not comp_data.empty:
+    comp_data = comp_data.rename(columns={'Make': 'company', 'Year': 'year', 'Price': 'selling_price'})
+    comp_data['avg_price_usd'] = comp_data['selling_price'] / 83.5  # Convert INR to USD (2024 rate)
+    comp_data['market_share_percent'] = comp_data['company'].map({'Tata': 53.0, 'MG': 15.0, 'Hyundai': 10.0}).fillna(5.0)  # From 2024 reports
+    comp_data = comp_data[['company', 'year', 'market_share_percent', 'avg_price_usd']]
 else:
-    print("Warning: No 'fuel' or 'fuel_type' column found. Check CSV.")
-comp_data['company'] = comp_data['name'].str.split().str[0]  # Extract brand
-comp_data['avg_price_usd'] = comp_data['selling_price'] / 83.5  # Convert INR to USD (2024 rate)
-comp_data['market_share_percent'] = comp_data['company'].map({'Tata': 53.0, 'MG': 15.0, 'Hyundai': 10.0}).fillna(5.0)  # From 2024 reports
-comp_data = comp_data[['company', 'year', 'market_share_percent', 'avg_price_usd']]
+    print("Warning: No electric vehicles found in car details v4.csv. competitor_data.csv will be empty.")
 comp_data.to_csv(os.path.join(output_data_dir, 'competitor_data.csv'), index=False)
 print(f"Cleaned competitor data: {comp_data.shape}")

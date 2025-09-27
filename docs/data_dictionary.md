@@ -3,11 +3,11 @@ This document describes the datasets used to analyze Tesla’s potential entry i
 1. ev_sales_india.csv
 
 Source: Kaggle - India EV Market Data 2001–2024
-Description: Historical EV sales in India, filtered for passenger vehicles (2015–2024).
+Description: Historical EV sales in India, filtered for passenger vehicles (LMV, 2015–2024).
 Variables:
 year: Integer (e.g., 2020)
 units_sold: Integer, number of EVs sold
-vehicle_category: String, vehicle type (passenger cars)
+vehicle_category: String, vehicle type (LMV)
 
 
 Use: Estimate market size and CAGR for 2026 projections.
