@@ -25,12 +25,11 @@ summary_lines = ["# Phase 3: Analysis Summary\n\n## Key Insights\n"]
 
 # EDA: EV Sales Trends
 if not ev_sales.empty and 'year' in ev_sales.columns and 'units_sold' in ev_sales.columns:
-    ev_sales['units_sold_scaled'] = ev_sales['units_sold'] * 1000  # Scale to actual units
     plt.figure(figsize=(10, 6))
-    sns.lineplot(data=ev_sales, x='year', y='units_sold_scaled', hue='vehicle_category', marker='o')
+    sns.lineplot(data=ev_sales, x='year', y='units_sold', hue='vehicle_category', marker='o')
     plt.title('India EV Sales (Passenger Vehicles, 2015–2024)')
     plt.xlabel('Year')
-    plt.ylabel('Units Sold (Thousands)')
+    plt.ylabel('Units Sold')
     plt.savefig(os.path.join(figures_dir, 'ev_sales_trend.png'))
     plt.close()
 
@@ -38,8 +37,8 @@ if not ev_sales.empty and 'year' in ev_sales.columns and 'units_sold' in ev_sale
     start_year = ev_sales['year'].min()
     end_year = ev_sales['year'].max()
     if end_year > start_year:
-        start_sales = ev_sales[ev_sales['year'] == start_year]['units_sold_scaled'].sum()
-        end_sales = ev_sales[ev_sales['year'] == end_year]['units_sold_scaled'].sum()
+        start_sales = ev_sales[ev_sales['year'] == start_year]['units_sold'].sum()
+        end_sales = ev_sales[ev_sales['year'] == end_year]['units_sold'].sum()
         if start_sales > 0:
             cagr = ((end_sales / start_sales) ** (1 / (end_year - start_year)) - 1) * 100
             summary_lines.append(f"- **EV Market Growth**: Passenger EV sales grew at a CAGR of {cagr:.2f}% from {start_year}–{end_year}.\n")
@@ -88,8 +87,10 @@ else:
 
 # Forecasting: EV Sales for 2026
 if not ev_sales.empty and len(ev_sales['year'].unique()) >= 2:
-    X = ev_sales[['year']].values
-    y = ev_sales['units_sold'].values * 1000  # Scale to actual units
+    # Aggregate units_sold by year
+    ev_sales_agg = ev_sales.groupby('year')['units_sold'].sum().reset_index()
+    X = ev_sales_agg[['year']].values
+    y = ev_sales_agg['units_sold'].values
     model = LinearRegression()
     model.fit(X, y)
     future_years = np.array([[2025], [2026]])
@@ -97,11 +98,11 @@ if not ev_sales.empty and len(ev_sales['year'].unique()) >= 2:
     forecast = pd.DataFrame({'year': [2025, 2026], 'predicted_units_sold': predictions})
     print("2026 EV Sales Forecast:\n", forecast)
     plt.figure(figsize=(10, 6))
-    sns.lineplot(data=ev_sales, x='year', y='units_sold_scaled', label='Historical', marker='o')
+    sns.lineplot(data=ev_sales_agg, x='year', y='units_sold', label='Historical', marker='o')
     plt.plot(future_years, predictions, 'ro-', label='Forecast')
     plt.title('EV Sales Forecast (2025–2026)')
     plt.xlabel('Year')
-    plt.ylabel('Units Sold (Thousands)')
+    plt.ylabel('Units Sold')
     plt.legend()
     plt.savefig(os.path.join(figures_dir, 'sales_forecast.png'))
     plt.close()
