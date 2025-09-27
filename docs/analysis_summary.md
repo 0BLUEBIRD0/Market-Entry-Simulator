@@ -8,7 +8,7 @@
 
 - **Competitor Landscape**: Tata leads with ~53.0% share. Pricing ranges from USD 16736.53 to 25149.70.
 
-- **2026 Forecast**: Predicted 298 passenger EV units sold in 2026.
+- **2026 Forecast**: Predicted 298123 passenger EV units sold in 2026.
 
 - **Clusters**: Competitors form low-price/high-share (e.g., Tata) and mid-price/mid-share (e.g., MG). Tesla can target premium.
 
