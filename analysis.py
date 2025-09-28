@@ -1,9 +1,11 @@
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 from sklearn.linear_model import LinearRegression
 from sklearn.cluster import KMeans
+from scipy.optimize import curve_fit
 import os
 
 # Set directories
@@ -85,28 +87,49 @@ else:
     print("Warning: Competitor data is empty. Check data_cleaning.py.")
     summary_lines.append("- **Competitor Landscape**: No competitor data available.\n")
 
-# Forecasting: EV Sales for 2026
+# Forecasting: EV Sales for 2026 (Exponential Model)
 if not ev_sales.empty and len(ev_sales['year'].unique()) >= 2:
     # Aggregate units_sold by year
     ev_sales_agg = ev_sales.groupby('year')['units_sold'].sum().reset_index()
-    X = ev_sales_agg[['year']].values
-    y = ev_sales_agg['units_sold'].values
-    model = LinearRegression()
-    model.fit(X, y)
-    future_years = np.array([[2025], [2026]])
-    predictions = model.predict(future_years)
-    forecast = pd.DataFrame({'year': [2025, 2026], 'predicted_units_sold': predictions})
-    print("2026 EV Sales Forecast:\n", forecast)
-    plt.figure(figsize=(10, 6))
-    sns.lineplot(data=ev_sales_agg, x='year', y='units_sold', label='Historical', marker='o')
-    plt.plot(future_years, predictions, 'ro-', label='Forecast')
-    plt.title('EV Sales Forecast (2025–2026)')
-    plt.xlabel('Year')
-    plt.ylabel('Units Sold')
-    plt.legend()
-    plt.savefig(os.path.join(figures_dir, 'sales_forecast.png'))
-    plt.close()
-    summary_lines.append(f"- **2026 Forecast**: Predicted {forecast.loc[forecast['year'] == 2026, 'predicted_units_sold'].iloc[0]:.0f} passenger EV units sold in 2026.\n")
+    # Define exponential growth function
+    def exp_growth(x, a, b):
+        return a * np.exp(b * (x - ev_sales_agg['year'].min()))
+    # Fit exponential model
+    try:
+        popt, _ = curve_fit(exp_growth, ev_sales_agg['year'], ev_sales_agg['units_sold'], p0=[1000, 0.1], maxfev=10000)
+        future_years = np.array([2025, 2026])
+        predictions = exp_growth(future_years, *popt)
+        forecast = pd.DataFrame({'year': future_years, 'predicted_units_sold': predictions})
+        print("2026 EV Sales Forecast:\n", forecast)
+        plt.figure(figsize=(10, 6))
+        sns.lineplot(data=ev_sales_agg, x='year', y='units_sold', label='Historical', marker='o')
+        plt.plot(future_years, predictions, 'ro-', label='Forecast')
+        plt.title('EV Sales Forecast (2025–2026)')
+        plt.xlabel('Year')
+        plt.ylabel('Units Sold')
+        plt.legend()
+        plt.savefig(os.path.join(figures_dir, 'sales_forecast.png'))
+        plt.close()
+        summary_lines.append(f"- **2026 Forecast**: Projected {forecast.loc[forecast['year'] == 2026, 'predicted_units_sold'].iloc[0]:.0f} passenger EV units sold in 2026.\n")
+    except RuntimeError:
+        print("Warning: Exponential fit failed. Falling back to linear model.")
+        X = ev_sales_agg[['year']].values
+        y = ev_sales_agg['units_sold'].values
+        model = LinearRegression()
+        model.fit(X, y)
+        predictions = model.predict(np.array([[2025], [2026]]))
+        forecast = pd.DataFrame({'year': [2025, 2026], 'predicted_units_sold': predictions})
+        print("2026 EV Sales Forecast (Linear Fallback):\n", forecast)
+        plt.figure(figsize=(10, 6))
+        sns.lineplot(data=ev_sales_agg, x='year', y='units_sold', label='Historical', marker='o')
+        plt.plot(future_years, predictions, 'ro-', label='Forecast')
+        plt.title('EV Sales Forecast (2025–2026)')
+        plt.xlabel('Year')
+        plt.ylabel('Units Sold')
+        plt.legend()
+        plt.savefig(os.path.join(figures_dir, 'sales_forecast.png'))
+        plt.close()
+        summary_lines.append(f"- **2026 Forecast**: Projected {forecast.loc[forecast['year'] == 2026, 'predicted_units_sold'].iloc[0]:.0f} passenger EV units sold in 2026 (linear model).\n")
 else:
     summary_lines.append("- **2026 Forecast**: Insufficient data for forecasting.\n")
 
@@ -116,7 +139,7 @@ if not competitors.empty:
         'market_share_percent': 'mean',
         'avg_price_usd': 'mean'
     }).reset_index()
-    n_clusters = min(2, len(comp_summary))  # Use 2 clusters or fewer if less data
+    n_clusters = min(2, len(comp_summary))  
     if n_clusters >= 2:
         X_comp = comp_summary[['avg_price_usd', 'market_share_percent']].values
         kmeans = KMeans(n_clusters=n_clusters, random_state=42)
